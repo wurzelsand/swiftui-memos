@@ -1,5 +1,7 @@
 ## Title
 
+<img src="media/edit-list-of-employees.gif" width=300>
+
 ```swift
 import SwiftUI
 
