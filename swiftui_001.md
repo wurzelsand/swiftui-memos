@@ -1,6 +1,6 @@
 ## Liste von Namen editieren
 
-**Aufgabe:** Eine Firma (`Company`) besteht aus drei Angestellten (`Employee`). Die Namen der Angestellten sollen in einer `ForEach`-Liste dargestellt werden. Wird auf einen Angestellten geklickt, kann man dessen Namen editieren.
+**Aufgabe:** Eine Firma (`Company`) besteht aus drei Angestellten (`Employee`). Die Namen der Angestellten sollen in einem `ForEach`-*View* dargestellt werden. Wird auf einen Angestellten geklickt, kann man dessen Namen in einem neuen Fenster editieren.
 
 <img src="media/edit-list-of-employees.gif" width=300>
 
@@ -64,4 +64,4 @@ struct EditView: View {
 }
 ```
 
-`Employee` muss ein Referenztyp sein, da wir ansonsten in `EditView` die Eigenschaft `employee` nicht verändern könnten (*'self' is immutable*). Das Problem ist, dass die Änderung der `name`-Eigenschaft von `employee` von `ContentView` nicht bemerkt wird. Daher rufe ich explizit `company.objectWillChange.send()` auf.
+`Employee` muss ein Referenztyp sein, da wir ansonsten in `EditView` die Eigenschaft `employee` nicht verändern könnten (*'self' is immutable*). Das Problem ist, dass die Änderung der `name`-Eigenschaft von `employee` von `ContentView` nicht bemerkt wird. Der neue Name würde dann nicht angezeigt. Daher rufe ich explizit `company.objectWillChange.send()` auf.
