@@ -65,3 +65,63 @@ struct EditView: View {
 ```
 
 `Employee` muss ein Referenztyp sein, da wir ansonsten in `EditView` die Eigenschaft `employee` nicht verändern könnten (*'self' is immutable*). Das Problem ist, dass die Änderung der `name`-Eigenschaft von `employee` von `ContentView` nicht bemerkt wird. Der neue Name würde dann nicht angezeigt. Daher rufe ich explizit `company.objectWillChange.send()` auf.
+
+### Update
+
+Mich störte `company.objectWillChange.send()`. Daher habe ich die Lösung verändert. 
+* Die Eigenschaft `employees` von `EditView` ist wegen `@Binding` veränderbar.
+* Um den Namen eines Angestellten zu verändern, benötigen wir den Index des Angestellen innerhalb des Arrays.
+* Um den Index als `item` für `sheet` benutzen zu können muss der Typ des Index das `Identifiable`-Protokoll erfüllen. Daher die Klasse `SelectedIndex`.
+
+```swift
+import SwiftUI
+
+class SelectedIndex: Identifiable {
+    var idx: Int
+    
+    init(_ idx: Int) {
+        self.idx = idx
+    }
+}
+
+class Company: ObservableObject {
+    @Published var employees = ["Sam", "Tom", "Jim"]
+}
+
+struct ContentView: View {
+    @State private var selection: SelectedIndex?
+    @StateObject var company = Company()
+    
+    var body: some View {
+        ForEach(company.employees.indices) { idx in
+            Text(company.employees[idx]).onTapGesture {
+                selection = SelectedIndex(idx)
+            }
+        }.sheet(item: $selection) { selected in
+            EditView(employees: $company.employees, idx: selected.idx)
+        }
+    }
+}
+
+struct EditView: View {
+    @Environment(\.presentationMode) var presentation
+    
+    @Binding var employees: [String]
+    let idx: Int
+    @State private var nameEdit: String
+    
+    init(employees: Binding<[String]>, idx: Int) {
+        self._employees = employees
+        self.idx = idx
+        self._nameEdit = State(initialValue: employees.wrappedValue[idx])
+    }
+    
+    var body: some View {
+        TextField("Employee", text: $nameEdit)
+        Button("Save") {
+            employees[idx] = nameEdit
+            presentation.wrappedValue.dismiss()
+        }
+    }
+}
+```
