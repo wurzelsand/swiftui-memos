@@ -2,7 +2,7 @@
 
 **Aufgabe:** Beim Start der App soll die Ausrichtung des Geräts angezeigt werden. Beim Drehen soll die Anzeige aktualisiert werden.
 
-<a><img src="media/orientations.gif" width=300></a>
+<a><img src="media/orientations.gif" width=400></a>
 
 Ein Problem ist, dass es zwei verschiedene Typen für die Ausrichtung gibt: `UIDeviceOrientation` und `UIInterfaceOrientation`. Dabei sind die Definitionen von *Landscape Right* und *Landscape Left* seltsamerweise vertauscht. Ein weiteres Problem ist, dass sich der Anfangswert von `UIInterfaceOrientation` gut ermitteln lässt, ich es aber ohne die `AppDelegate`-Klasse nicht schaffe, deren Änderungen zu verfolgen. `UIDeviceOrientation` hingegen kann gut bei Änderungen gemessen werden, ich konnte aber keinen Startwert ermitteln. Hier mische ich die Methoden und gebe als Ergebnis `UIInterfaceOrientation` aus.
 
