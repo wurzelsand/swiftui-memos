@@ -73,13 +73,13 @@ struct EditView: View {
 Mich störte `company.objectWillChange.send()`. Daher habe ich die Lösung verändert. 
 * Die Eigenschaft `employees` von `EditView` ist wegen `@Binding` nun veränderbar.
 * Um den Namen eines Angestellten zu verändern, benötigen wir den Index des Angestellen innerhalb des Arrays.
-* Um den Index als `item` für `sheet` benutzen zu können muss der Typ des Index das `Identifiable`-Protokoll erfüllen. Daher die Klasse `SelectedIndex`.
+* Um den Index als `item` für `sheet` benutzen zu können muss der Typ des Index das `Identifiable`-Protokoll erfüllen. Daher die Klasse `SelectedIndex`. Möglich wäre auch eine `Identifiable`-*Extension* für `Int` zu verwenden. Nur finde ich, dass der Typ `Int` an sich keine `Identifiable`-Merkmale besitzt, dass sich beispielsweise ein Attribut von `Int` ändern könnte, ohne dass sich dabei seine Identität änderte.
 
 ```swift
 import SwiftUI
 
 class SelectedIndex: Identifiable {
-    var idx: Int
+    let idx: Int
     
     init(_ idx: Int) {
         self.idx = idx
