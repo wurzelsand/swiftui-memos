@@ -4,6 +4,8 @@
 
 <img src="media/edit-list-of-employees.gif" width=300>
 
+### Version 1
+
 ```swift
 import SwiftUI
 
@@ -66,7 +68,7 @@ struct EditView: View {
 
 `Employee` muss ein Referenztyp sein, da wir ansonsten in `EditView` die Eigenschaft `employee` nicht verändern könnten (*'self' is immutable*). Das Problem ist, dass die Änderung der `name`-Eigenschaft von `employee` von `ContentView` nicht bemerkt wird. Der neue Name würde dann nicht angezeigt. Daher rufe ich explizit `company.objectWillChange.send()` auf.
 
-### Update
+### Version 2
 
 Mich störte `company.objectWillChange.send()`. Daher habe ich die Lösung verändert. 
 * Die Eigenschaft `employees` von `EditView` ist wegen `@Binding` veränderbar.
@@ -120,6 +122,73 @@ struct EditView: View {
         TextField("Employee", text: $nameEdit)
         Button("Save") {
             employees[idx] = nameEdit
+            presentation.wrappedValue.dismiss()
+        }
+    }
+}
+```
+
+### Version 3
+
+Dass man in Version 2 über die Indizes gehen muss, finde ich auch nicht so ideal. Deshalb reaktiviere ich noch einmal `objectWillChange.send()`, aber diesmal innerhalb der `Employee`-Klasse, so dass es nicht bei jeder Änderung aufgerufen werden muss. Nicht ganz ideal, aber bis jetzt die ordentlichste Version.
+
+```swift
+import SwiftUI
+
+class Employee: Identifiable {
+    var name: String {
+        willSet {
+            company.objectWillChange.send()
+        }
+    }
+    var company: Company
+    
+    init(name: String, company: Company) {
+        self.name = name
+        self.company = company
+    }
+}
+
+class Company: ObservableObject {
+    var employees = [Employee]()
+    
+    init(employees: String...) {
+        for name in employees {
+            self.employees.append(Employee(name: name, company: self))
+        }
+    }
+}
+
+struct ContentView: View {
+    @State private var selected: Employee?
+    @StateObject var company = Company(employees: "Sam", "Tom", "Jim")
+    
+    var body: some View {
+        ForEach(company.employees) { employee in
+            Text(employee.name).onTapGesture {
+                selected = employee
+            }
+        }.sheet(item: $selected) { selected in
+            EditView(employee: selected)
+        }
+    }
+}
+
+struct EditView: View {
+    @Environment(\.presentationMode) var presentation
+    
+    var employee: Employee?
+    @State private var nameEdit: String
+    
+    init(employee: Employee) {
+        self.employee = employee
+        self._nameEdit = State(initialValue: employee.name)
+    }
+    
+    var body: some View {
+        TextField("Employee", text: $nameEdit)
+        Button("Save") {
+            employee?.name = nameEdit
             presentation.wrappedValue.dismiss()
         }
     }
