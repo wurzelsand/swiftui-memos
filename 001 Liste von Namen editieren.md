@@ -73,7 +73,7 @@ struct EditView: View {
 Mich störte `company.objectWillChange.send()`. Daher habe ich die Lösung verändert. 
 * Die Eigenschaft `employees` von `EditView` ist wegen `@Binding` nun veränderbar.
 * Um den Namen eines Angestellten zu verändern, benötigen wir den Index des Angestellen innerhalb des Arrays.
-* Um den Index als `item` für `sheet` benutzen zu können muss der Typ des Index das `Identifiable`-Protokoll erfüllen. Daher die Klasse `SelectedIndex`. Möglich wäre auch eine `Identifiable`-*Extension* für `Int` zu verwenden. Nur finde ich, dass der Typ `Int` an sich keine `Identifiable`-Merkmale besitzt, dass sich beispielsweise ein Attribut von `Int` ändern könnte, ohne dass sich dabei seine Identität änderte.
+* Um den Index als `item` für `sheet` benutzen zu können muss der Typ des Index das `Identifiable`-Protokoll erfüllen. Daher die Klasse `SelectedIndex`. Möglich wäre es auch, eine `Identifiable`-*Extension* für `Int` zu verwenden.
 
 ```swift
 import SwiftUI
@@ -130,7 +130,7 @@ struct EditView: View {
 
 ### Version 3
 
-Dass man in Version 2 über die Indizes gehen muss, finde ich auch nicht so ideal. Deshalb reaktiviere ich noch einmal `objectWillChange.send()`, aber diesmal innerhalb der `Employee`-Klasse, so dass es nur an einer Stelle stehen muss und nicht an jeder Stelle, an der `Employee` verändert wird. Nicht ganz ideal, aber bis jetzt die ordentlichste Version.
+Dass man in Version 2 über die Indizes gehen muss, finde ich auch nicht so ideal. Deshalb reaktiviere ich noch einmal `objectWillChange.send()`, aber diesmal innerhalb der `Employee`-Klasse, so dass es nur an einer Stelle stehen muss und nicht an jeder Stelle, an der `Employee` verändert wird.
 
 ```swift
 import SwiftUI
