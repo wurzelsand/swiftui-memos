@@ -98,12 +98,6 @@ struct ContentView: View {
         }
     }
 }
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}
 ```
 
 Siehe auch [developer.apple.com/forums/ SwiftUI - Determining Current Device and Orientation](https://developer.apple.com/forums/thread/126878?answerId=397774022#397774022)
