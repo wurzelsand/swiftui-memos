@@ -1,5 +1,6 @@
 ## @Published enum verschickt Nachricht
 
+### Aufgabe
 Wir haben eine `ObservableObject`-Klasse `UserList` die eine `@Published` Eigenschaft `ordering` besitzt. `ordering` ist ein Enumerationstyp. Wenn er seinen Wert ändert, soll über `print` darüber informiert werden.
 
 ```swift
@@ -32,6 +33,8 @@ struct ContentView: View {
 ```
 
 Der Button soll so gelassen werden: Er ändert nur den Wert von `ordering`. Die `print`-Nachricht soll aus der `UserList`-Klasse verschickt werden.
+
+### Ausführung
 
 ```swift
 import SwiftUI
