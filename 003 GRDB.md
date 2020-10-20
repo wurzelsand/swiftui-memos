@@ -99,7 +99,7 @@ func itemsPublisher() -> AnyPublisher<[Item], Error> {
 }
 ```
 
-`valueObservation` ist dabei ein Objekt, das dem Closure Zugriff auf eine Datenbank gibt. Im Closure erstellt die `fetchAll`-Funktion ein Array aus sämtlichen *Items*, die in der Datenbank gefunden werden. `valueObservation` kann nun dieses Array überwachen. Den Zugriff auf die Datenbank bekommt `valueObservation` aber erst im nächsten Schritt: Hier wird das Closure mit `databaseWriter` verknüpft und ergibt einen *Publisher*.
+`valueObservation` ist dabei ein Objekt, das dem Closure Zugriff auf eine Datenbank gibt. Im Closure erstellt die `fetchAll`-Funktion ein Array aus sämtlichen *Items*, die in der Datenbank gefunden werden. `valueObservation` kann nun dieses Array überwachen. Den Zugriff auf die Datenbank bekommt `valueObservation` aber erst im nächsten Schritt: Hier wird das Closure mit `databaseWriter` verknüpft und ergibt einen *Publisher*. [swift-memos 004](https://github.com/wurzelsand/swift-memos/blob/main/004%20ValueObservation%20aus%20GRDB%20verstehen.md)
 
 *Persistence.swift:*
 
