@@ -166,8 +166,81 @@ extension Item: CustomStringConvertible {
 }
 ```
 
-Die drei Eigenschaften `id`, `name` und `quantity` entsprechen den gleichlautenden Feldern der SQLite-Datenbank. `id` ist ein *Optional*, da sich das entsprechende Feld der SQLite-Datenbank selbst organisiert und zunächst mit `nil` initialisiert wird.
+Die drei Eigenschaften `id`, `name` und `quantity` entsprechen den gleichlautenden Feldern der SQLite-Datenbank. `id` ist ein *Optional*, da es sich als `autoIncrementedPrimaryKey` selbst organisiert und von uns nur mit `nil` initialisiert wird.
 
 Die entscheidende *Extension* ist das Erfüllen der Protokolle `Codable`, `FetchableRecord` und `MutablePersistableRecord`.
-* `Codable`: Item kann sich in eine externe Represäntation umwandeln und sich auch wieder selbst herstellen.
-* `FetchableRecord`: 
+* `Codable`: Damit sich die *Items* in eine externe Represäntation umwandeln und sich auch wieder selbst herstellen können.
+* `FetchableRecord`: Damit wir in unserer `AppDatabase.itemsPublisher`-Methode die `fetchAll`-Funktion aufrufen können.
+* `MutablePersistableRecord`: `Item` erhält damit u. a. die Methoden `save`, `deleteAll` und `all`.
+
+*ItemListModel.swift:*
+
+```swift
+import GRDB
+import Combine
+
+class ItemListModel: ObservableObject {
+    @Published var itemList = [Item]()
+    private let database: AppDatabase
+    private var itemsTracker: AnyCancellable?
+    
+    init(database: AppDatabase) {
+        self.database = database
+        itemsTracker = database.itemsPublisher().catch { error in
+            Just<[Item]>([])
+        }.sink { [weak self] items in
+            self?.itemList = items
+        }
+    }
+    
+    func deleteItems(atOffsets offsets: IndexSet) throws {
+        let userIDs = offsets.compactMap { itemList[$0].id }
+        try database.deleteItems(ids: userIDs)
+    }
+    
+    func newRandomItem() throws {
+        func randomString() -> String {
+            let letters = "abcdefghijklmnopqrstuvwxyz"
+            return String((0..<7).map { _ in letters.randomElement()! })
+        }
+        
+        var item = Item.init(id: nil,
+                             name: randomString().capitalized,
+                             quantity: Int.random(in: 1...9))
+        try database.saveItem(&item)
+    }
+}
+```
+
+`database.itemsPublisher().catch` ist ein *Publisher*: Falls `itemsPublisher` einen Fehler sendet, veröffentlicht `catch` ein leeres *Array* aus *Items*. Ansonsten veröffentlicht `catch` das *Array* aus *Items*, welches es von `itemsPublisher` erhält. Mit `sink` haben wir auch gleich den Empfänger: Das *Closure* von `sink` sorgt dafür, dass nach jeder Veröffentlichung `itemList` aktualisiert wird. Da `itemList` selbst ein *Publisher* ist, werden alle Views, die auf `itemList` verweisen, aktualisiert. Das `itemsTracker`-*Cancellable* sorgt für die Lebensdauer des `sink`-*Closures*. 
+
+*ItemListView.swift:*
+
+```swift
+import SwiftUI
+
+struct ItemListView: View {
+    @ObservedObject var itemListModel: ItemListModel
+    
+    var body: some View {
+        VStack {
+            Button("New") {
+                try! itemListModel.newRandomItem()
+            }
+            List {
+                ForEach(itemListModel.itemList) { item in
+                    Text(String(describing: item))
+                }.onDelete { indexSet in
+                    try! itemListModel.deleteItems(atOffsets: indexSet)
+                }
+            }
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemListView(itemListModel: ItemListModel(database: try! .empty()))
+    }
+}
+```
