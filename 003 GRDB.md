@@ -170,7 +170,15 @@ Die drei Eigenschaften `id`, `name` und `quantity` entsprechen den gleichlautend
 
 Die entscheidende *Extension* ist das Erfüllen der Protokolle `Codable`, `FetchableRecord` und `MutablePersistableRecord`.
 * `Codable`: Damit sich die *Items* in eine externe Represäntation umwandeln und sich auch wieder selbst herstellen können.
-* `FetchableRecord`: Damit wir in unserer `AppDatabase.itemsPublisher`-Methode die `fetchAll`-Funktion aufrufen können.
+* `FetchableRecord`: Damit das Ergebnis von `Item.all()` (siehe *AppDatabase.swift*) eine *Extension* mit der Methode `fetchAll` erhält. Der Rückgabetyp von `Item.all()` ist nämlich `FetchRequest` und die `fetchAll`-*Extension* ist an eine Bedingung geknüpft:
+
+    ```swift
+    extension FetchRequest where Self.RowDecoder : GRDB.FetchableRecord {
+        public func fetchAll(_ db: GRDB.Database) throws -> [Self.RowDecoder]
+        ...
+    }
+    ```
+
 * `MutablePersistableRecord`: `Item` erhält damit u. a. die Methoden `save`, `deleteAll` und `all`. Das Protokoll deklariert außerdem die Methode `didInsert`, die immer aufgerufen wird, wenn eine Zeile erfolgreich in die Datenbank eingefügt wurde. Seine Default-Implementierung, die vermutlich aus einem leeren Rumpf besteht, ersetzen wir durch eine eigene Implementierung.
 
 *ItemListModel.swift:*
