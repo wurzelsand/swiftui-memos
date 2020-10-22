@@ -376,11 +376,11 @@ struct ItemListView: View {
                         for: .new()),
                     dismissAction: { newItemSheet = false })
             })
-        }
+        }</b>
     }
 }
 
-struct ItemRow: View {
+<b>struct ItemRow: View {
     var item: Item
     
     var body: some View {
