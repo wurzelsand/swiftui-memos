@@ -255,8 +255,71 @@ struct ContentView_Previews: PreviewProvider {
 
 ## Schritt 2: Items in neuem Fenster erstellen
 
-<img src="media/simplest-grdb-app-2.gif" height=400>
+<a><img src="media/simplest-grdb-app-2.gif" height=400><a>
 
 ### Ausführung
 
+<a><img src="media/grdbsmall-files-2.png" width=300></a>
+
+
+*ItemEditorModel.swift:*
+
+```swift
+import Combine
+
+class ItemEditorModel: ObservableObject {
+    @Published var nameEdit = ""
+    @Published var quantityEdit = ""
+    
+    private let database: AppDatabase
+    private var item: Item
+    
+    init(database: AppDatabase, item: Item) {
+        self.database = database
+        self.item = item
+    }
+    
+    func saveItem() throws {
+        // quantityEdit empty => item.quantity becomes nil
+        if !nameEdit.isEmpty {
+            item.name = nameEdit
+            item.quantity = Int(quantityEdit)
+        }
+        try database.saveItem(&item)
+    }
+}
+```
+
+*ItemListModel:*
+
+<pre>
+import GRDB
+import Combine
+
+class ItemListModel: ObservableObject {
+    @Published var itemList = [Item]()
+    private let database: AppDatabase
+    private var itemsTracker: AnyCancellable?
+    
+    init(database: AppDatabase) {
+        self.database = database
+        itemsTracker = database.itemsPublisher().catch { error in
+            Just<[Item]>([])
+        }.sink { [weak self] items in
+            self?.itemList = items
+        }
+    }
+    
+    func deleteItems(atOffsets offsets: IndexSet) throws {
+        let userIDs = offsets.compactMap { itemList[$0].id }
+        try database.deleteItems(ids: userIDs)
+    }
+    
+    <b>func newItemEditorModel(for item: Item) -> ItemEditorModel {
+        ItemEditorModel(database: database, item: item)
+    }</b>
+    
+<b>//    <s>func newRandomItem() throws {</s></b>
+}
+</pre>
 
