@@ -323,3 +323,79 @@ class ItemListModel: ObservableObject {
 }
 </pre>
 
+*Item.swift*
+
+<pre>
+import GRDB
+
+struct Item: Identifiable {
+    var id: Int64?
+    var name: String
+    var quantity: Int?
+}
+
+extension Item {
+    static func new() -> Item {
+        Item(id: nil, name: "", quantity: nil)
+    }
+}
+
+extension Item: Codable, FetchableRecord, MutablePersistableRecord {
+    mutating func didInsert(with rowID: Int64, for column: String?) {
+        id = rowID
+    }
+}
+
+<b>//extension Item: CustomStringConvertible {</b>
+</pre>
+
+*ItemListView.swift:*
+
+<pre>
+import SwiftUI
+
+struct ItemListView: View {
+    @ObservedObject var itemListModel: ItemListModel
+    <b>@State private var newItemSheet = false</b>
+    
+    var body: some View {
+        <b>NavigationView {</b>
+            List {
+                ForEach(itemListModel.itemList) { item in
+                    <b>ItemRow(item: item)</b>
+                }.onDelete { indexSet in
+                    try! itemListModel.deleteItems(atOffsets: indexSet)
+                }
+            }
+            <b>.navigationBarTitle(Text("\(itemListModel.itemList.count) Items"))
+            .navigationBarItems(trailing: Button("Add") {
+                newItemSheet = true
+            }).sheet(isPresented: $newItemSheet, content: {
+                ItemEditorView(
+                    itemEditorModel: itemListModel.newItemEditorModel(
+                        for: .new()),
+                    dismissAction: { newItemSheet = false })
+            })
+        }
+    }
+}
+
+struct ItemRow: View {
+    var item: Item
+    
+    var body: some View {
+        HStack {
+            Text(item.name)
+            Spacer()
+            Text(item.quantity.map { String($0) } ?? "")
+        }
+    }
+}</b>
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemListView(itemListModel: ItemListModel(database: try! .empty()))
+    }
+}
+</pre>
+
