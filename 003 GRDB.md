@@ -399,3 +399,44 @@ struct ContentView_Previews: PreviewProvider {
 }
 </pre>
 
+*ItemEditorView.swift:*
+
+```swift
+import SwiftUI
+
+struct ItemEditorView: View {
+    @ObservedObject var itemEditorModel: ItemEditorModel
+    let dismissAction: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            List {
+                TextField("Name", text: $itemEditorModel.nameEdit)
+                TextField("Quantity", text: $itemEditorModel.quantityEdit)
+            }
+            .listStyle(GroupedListStyle())
+            .navigationBarTitle("New Item")
+            .navigationBarItems(leading: Button("Cancel") {
+                dismissAction()
+            }, trailing: Button("Save") {
+                try! saveAndExit()
+            })
+        }
+    }
+    
+    private func saveAndExit() throws {
+        try itemEditorModel.saveItem()
+        dismissAction()
+    }
+}
+
+struct ItemEditorView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemEditorView(
+            itemEditorModel: ItemEditorModel(
+                database: try! .empty(), item: .new()),
+            dismissAction: {})
+    }
+}
+```
+
