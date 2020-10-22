@@ -252,3 +252,11 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 ```
+
+## Schritt 2: Items in neuem Fenster erstellen
+
+<img src="media/simplest-grdb-app-2.gif" height=400>
+
+### Ausführung
+
+
