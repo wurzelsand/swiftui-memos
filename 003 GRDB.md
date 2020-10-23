@@ -1,6 +1,6 @@
 ## GRDB
 
-### Zunächst eine möglichst minimale App mit GRDB
+### Schritt 1: Zunächst eine möglichst minimale App mit GRDB
 
 Wir benutzen GRDB als SQLite-Wrapper und erstellen eine möglichst simple App: Die Datenbank soll aus einer Liste von Items bestehen. Jedes `Item` besteht aus einem Namen (`name`) und optional aus seiner Anzahl (`quantity`). Der Button *New* erstellt ein neues Item mit einem zufälligen Namen und einer zufälligen Anzahl. Durch ein Wischen nach links können Items aus der Liste gelöscht werden.
 
@@ -274,7 +274,7 @@ class ItemEditorModel: ObservableObject {
     @Published var quantityEdit = ""
     
     private let database: AppDatabase
-    private var item: Item
+    var item: Item
     
     init(database: AppDatabase, item: Item) {
         self.database = database
@@ -444,3 +444,157 @@ struct ItemEditorView_Previews: PreviewProvider {
 }
 ```
 
+## Schritt 3: Items bearbeitbar machen
+
+<img src="simplest-grdb-app-3.gif" height=400>
+
+### Ausführung
+
+*ItemEditorModel.swift:*
+
+<pre>
+import Combine
+
+class ItemEditorModel: ObservableObject {
+    @Published var nameEdit = ""
+    @Published var quantityEdit = ""
+    
+    private let database: AppDatabase
+    var item: Item
+    
+    init(database: AppDatabase, item: Item) {
+        self.database = database
+        self.item = item
+        <b>if !item.name.isEmpty {
+            nameEdit = item.name
+            if let quantity = item.quantity {
+                quantityEdit = String(quantity)
+            }
+        }</b>
+    }
+    
+    func saveItem() throws {
+        // quantityEdit empty => item.quantity becomes nil
+        if !nameEdit.isEmpty {
+            item.name = nameEdit
+            item.quantity = Int(quantityEdit)
+        }
+        try database.saveItem(&item)
+    }
+}
+</pre>
+
+*ItemListView.swift:*
+
+<pre>
+import SwiftUI
+
+struct ItemListView: View {
+    @ObservedObject var itemListModel: ItemListModel
+    @State private var newItemSheet = false
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(itemListModel.itemList) { item in
+                    <b>NavigationLink(
+                        destination: EditItemView(
+                            itemEditorModel: itemListModel.newItemEditorModel(for: item)),
+                        label: { ItemRow(item: item) })</b>
+                }.onDelete { indexSet in
+                    try! itemListModel.deleteItems(atOffsets: indexSet)
+                }
+            }
+            .navigationBarTitle(Text("\(itemListModel.itemList.count) Items"))
+            .navigationBarItems(trailing: Button("Add") {
+                newItemSheet = true
+            }).sheet(isPresented: $newItemSheet, content: {
+                <b>CreateItemView(
+                    itemEditorModel: itemListModel.newItemEditorModel(for: .new()),
+                    dismissAction: { newItemSheet = false})</b>
+            })
+        }
+    }
+}
+
+struct ItemRow: View {
+    var item: Item
+    
+    var body: some View {
+        HStack {
+            Text(item.name)
+            Spacer()
+            Text(item.quantity.map { String($0) } ?? "")
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemListView(itemListModel: ItemListModel(database: try! .empty()))
+    }
+}
+</pre>
+
+*ItemEditorView.swift:*
+
+<pre>
+import SwiftUI
+
+<b>struct ItemEditorView: View {
+    @ObservedObject var itemEditorModel: ItemEditorModel
+    
+    var body: some View {
+        List {
+            TextField("Name", text: $itemEditorModel.nameEdit)
+            TextField("Quantity", text: $itemEditorModel.quantityEdit)
+        }
+        .listStyle(GroupedListStyle())
+    }
+
+}
+
+struct CreateItemView: View {
+    @ObservedObject var itemEditorModel: ItemEditorModel
+    let dismissAction: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            ItemEditorView(itemEditorModel: itemEditorModel)
+                .navigationBarTitle("New Item")
+                .navigationBarItems(leading: Button("Cancel") {
+                    dismissAction()
+                }, trailing: Button("Save") {
+                    try! saveAndExit()
+                })
+        }
+    }
+    
+    private func saveAndExit() throws {
+        try itemEditorModel.saveItem()
+        dismissAction()
+    }
+}
+
+struct EditItemView: View {
+    @ObservedObject var itemEditorModel: ItemEditorModel
+    
+    var body: some View {
+        NavigationView {
+            ItemEditorView(itemEditorModel: itemEditorModel)
+                .onDisappear {
+                    try! itemEditorModel.saveItem()
+                }
+                .navigationBarTitle("Edit \(itemEditorModel.item.name)")
+        }
+    }
+}</b>
+
+struct ItemEditorView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemEditorView(
+            itemEditorModel: ItemEditorModel(
+                <b>database: try! .empty(), item: .new()))</b>
+    }
+}
+</pre>
