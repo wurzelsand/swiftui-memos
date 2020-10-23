@@ -287,7 +287,9 @@ class ItemEditorModel: ObservableObject {
             item.name = nameEdit
             item.quantity = Int(quantityEdit)
         }
-        try database.saveItem(&item)
+        if !item.isEmpty {
+            try database.saveItem(&item)
+        }
     }
 }
 ```
@@ -342,6 +344,10 @@ extension Item {
     static func new() -> Item {
         Item(id: nil, name: "", quantity: nil)
     }
+    
+    <b>var isEmpty: Bool {
+        name.isEmpty && quantity == nil
+    }</b>
 }
 
 extension Item: Codable, FetchableRecord, MutablePersistableRecord {
@@ -479,7 +485,9 @@ class ItemEditorModel: ObservableObject {
             item.name = nameEdit
             item.quantity = Int(quantityEdit)
         }
-        try database.saveItem(&item)
+        if !item.isEmpty {
+            try database.saveItem(&item)
+        }
     }
 }
 </pre>
