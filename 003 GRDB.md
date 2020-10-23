@@ -541,8 +541,9 @@ struct ContentView_Previews: PreviewProvider {
 <pre>
 import SwiftUI
 
-<b>struct ItemEditorView: View {
+struct ItemEditorView: View {
     @ObservedObject var itemEditorModel: ItemEditorModel
+    <b>//...</b>
     
     var body: some View {
         List {
@@ -554,7 +555,7 @@ import SwiftUI
 
 }
 
-struct CreateItemView: View {
+<b>struct CreateItemView: View {
     @ObservedObject var itemEditorModel: ItemEditorModel
     let dismissAction: () -> Void
     
