@@ -259,6 +259,8 @@ struct ContentView_Previews: PreviewProvider {
 
 ### Ausführung
 
+Neue Dateien: *ItemEditorModel.swift* und *ItemEditorView.swift*
+
 <a><img src="media/grdbsmall-files-2.png" width=300></a>
 
 
@@ -322,6 +324,8 @@ class ItemListModel: ObservableObject {
 <b>//    <s>func newRandomItem() throws {</s></b>
 }
 </pre>
+
+Wir benötigen `newEditorModel` damit wir aus `ItemListModel` ein `ItemEditorModel` erstellen können. Denn nur `ItemListModel` besitzt einen Verweis auf das `AppDatabase`-Singleton mit dem sich `ItemEditorModel` initialisieren lässt.
 
 *Item.swift*
 
