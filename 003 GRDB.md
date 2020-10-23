@@ -446,7 +446,7 @@ struct ItemEditorView_Previews: PreviewProvider {
 
 ## Schritt 3: Items bearbeitbar machen
 
-<img src="simplest-grdb-app-3.gif" height=400>
+<img src="media/simplest-grdb-app-3.gif" height=400>
 
 ### Ausführung
 
