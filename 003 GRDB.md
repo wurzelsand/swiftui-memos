@@ -862,5 +862,284 @@ Füge der Tabelle `item` in der Datenbank eine Spalte `notes` hinzu. `notes` sol
 
 ### Ausführung
 
+*AppDatabase.swift:*
 
+<pre>
+import GRDB
+import Combine
 
+struct AppDatabase {
+    private let databaseWriter: DatabaseWriter
+    
+    init(_ databaseWriter: DatabaseWriter) throws {
+        self.databaseWriter = databaseWriter
+        try migrator.migrate(databaseWriter)
+    }
+    
+    private var migrator: DatabaseMigrator {
+        var migrator = DatabaseMigrator()
+<b>//        #if DEBUG
+//        migrator.eraseDatabaseOnSchemaChange = true
+//        #endif</b>
+        migrator.registerMigration("createItem") { database in
+            try database.create(table: "item") { tableDefinition in
+                tableDefinition.autoIncrementedPrimaryKey("id")
+                tableDefinition.column("name", .text).notNull()
+                tableDefinition.column("quantity", .integer)
+            }
+        }
+        
+        <b>migrator.registerMigration("addNotes") { database in
+            try database.alter(table: "item") { table in
+                table.add(column: "notes", .text)
+            }
+            try database.execute(sql: "UPDATE item SET notes = name")
+        }</b>
+
+        return migrator
+    }
+}
+
+extension AppDatabase {
+    func saveItem(_ item: inout Item) throws {
+        try databaseWriter.write { database in
+            try item.save(database)
+        }
+    }
+    
+    func deleteItems(ids: [Int64]) throws {
+        try databaseWriter.write { database in
+            _ = try Item.deleteAll(database, keys: ids)
+        }
+    }
+    
+    func itemsUnorderedPublisher() -> AnyPublisher<[Item], Error> {
+        itemsPublisher(request: Item.all())
+    }
+    
+    func itemsOrderedByNamePublisher() -> AnyPublisher<[Item], Error> {
+        itemsPublisher(request: Item.all().orderedByName())
+    }
+    
+    func itemsOrderedByNameReversedPublisher() -> AnyPublisher<[Item], Error> {
+        itemsPublisher(request: Item.all().orderedByNameReversed())
+    }
+    
+    private func itemsPublisher(request: QueryInterfaceRequest<Item>)
+    -> AnyPublisher<[Item], Error> {
+        ValueObservation.tracking(request.fetchAll)
+            .publisher(in: databaseWriter)
+            .eraseToAnyPublisher()
+    }
+}
+</pre>
+
+*Item.swift:*
+
+<pre>
+import GRDB
+
+struct Item: Identifiable {
+    var id: Int64?
+    var name: String
+    var quantity: Int?
+    <b>var notes: String</b>
+}
+
+extension Item {
+    static func new() -> Item {
+        <b>Item(id: nil, name: "", quantity: nil, notes: "")</b>
+    }
+    
+    var isEmpty: Bool {
+        <b>name.isEmpty && notes.isEmpty && quantity == nil</b>
+    }
+}
+
+extension Item: Codable, FetchableRecord, MutablePersistableRecord {
+    fileprivate enum Columns {
+        static let name = Column(Item.CodingKeys.name)
+        static let quantity = Column(Item.CodingKeys.quantity)
+        <b>static let notes = Column(Item.CodingKeys.notes)</b>
+    }
+    
+    mutating func didInsert(with rowID: Int64, for column: String?) {
+        id = rowID
+    }
+}
+
+extension DerivableRequest where RowDecoder == Item {
+    func orderedByName() -> Self {
+        order(Item.Columns.name)
+    }
+    
+    func orderedByNameReversed() -> Self {
+        order(Item.Columns.name).reversed()
+    }
+}
+</pre>
+
+*ItemEditorModel.swift:*
+
+<pre>
+import Combine
+
+class ItemEditorModel: ObservableObject {
+    @Published var nameEdit = ""
+    @Published var quantityEdit = ""
+    <b>@Published var notesEdit = ""</b>
+    
+    private let database: AppDatabase
+    var item: Item
+    
+    init(database: AppDatabase, item: Item) {
+        self.database = database
+        self.item = item
+        if !item.name.isEmpty {
+            nameEdit = item.name
+            <b>notesEdit = item.notes</b>
+            if let quantity = item.quantity {
+                quantityEdit = String(quantity)
+            }
+        }
+    }
+    
+    func saveItem() throws {
+        // quantityEdit empty => item.quantity becomes nil
+        if !nameEdit.isEmpty {
+            item.name = nameEdit
+            <b>item.notes = notesEdit</b>
+            item.quantity = Int(quantityEdit)
+        }
+        if !item.isEmpty {
+            try database.saveItem(&item)
+        }
+    }
+}
+</pre>
+
+*ItemListView.swift:*
+
+<pre>
+import SwiftUI
+
+struct ItemListView: View {
+    @ObservedObject var itemListModel: ItemListModel
+    @State private var newItemSheet = false
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(itemListModel.itemList) { item in
+                    NavigationLink(
+                        destination: EditItemView(
+                            itemEditorModel: itemListModel.newItemEditorModel(for: item)),
+                        label: { ItemRow(item: item) })
+                }.onDelete { indexSet in
+                    try! itemListModel.deleteItems(atOffsets: indexSet)
+                }
+            }
+            .navigationBarTitle(Text("\(itemListModel.itemList.count) Items"))
+            .navigationBarItems(
+                leading: nextOrderingButton,
+                trailing: Button("Add") {
+                    newItemSheet = true
+                }).sheet(isPresented: $newItemSheet, content: {
+                    CreateItemView(
+                        itemEditorModel: itemListModel.newItemEditorModel(for: .new()),
+                        dismissAction: { newItemSheet = false})
+                })
+        }
+    }
+    
+    var nextOrderingButton: some View {
+        Button(itemListModel.ordering.rawValue) {
+            itemListModel.nextOrdering()
+        }
+    }
+}
+
+struct ItemRow: View {
+    var item: Item
+    
+    var body: some View {
+        HStack {
+            Text(item.name)
+            Spacer()
+            <b>Text(item.notes)
+            Spacer()</b>
+            Text(item.quantity.map { String($0) } ?? "")
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemListView(itemListModel: ItemListModel(database: try! .empty()))
+    }
+}
+</pre>
+
+*ItemEditorView.swift:*
+
+<pre>
+import SwiftUI
+
+struct ItemEditorView: View {
+    @ObservedObject var itemEditorModel: ItemEditorModel
+    
+    var body: some View {
+        List {
+            TextField("Name", text: $itemEditorModel.nameEdit)
+            TextField("Quantity", text: $itemEditorModel.quantityEdit)
+            <b>TextField("Notes", text: $itemEditorModel.notesEdit)</b>
+        }
+        .listStyle(GroupedListStyle())
+    }
+
+}
+
+struct CreateItemView: View {
+    @ObservedObject var itemEditorModel: ItemEditorModel
+    let dismissAction: () -> Void
+    
+    var body: some View {
+        NavigationView {
+            ItemEditorView(itemEditorModel: itemEditorModel)
+                .navigationBarTitle("New Item")
+                .navigationBarItems(leading: Button("Cancel") {
+                    dismissAction()
+                }, trailing: Button("Save") {
+                    try! saveAndExit()
+                })
+        }
+    }
+    
+    private func saveAndExit() throws {
+        try itemEditorModel.saveItem()
+        dismissAction()
+    }
+}
+
+struct EditItemView: View {
+    @ObservedObject var itemEditorModel: ItemEditorModel
+    
+    var body: some View {
+        NavigationView {
+            ItemEditorView(itemEditorModel: itemEditorModel)
+                .onDisappear {
+                    try! itemEditorModel.saveItem()
+                }
+                .navigationBarTitle("Edit \(itemEditorModel.item.name)")
+        }
+    }
+}
+
+struct ItemEditorView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemEditorView(
+            itemEditorModel: ItemEditorModel(
+                database: try! .empty(), item: .new()))
+    }
+}
+</pre>
