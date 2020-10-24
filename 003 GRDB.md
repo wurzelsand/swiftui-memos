@@ -851,3 +851,16 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 </pre>
+
+## Migration: Neue Spalte in der Datenbank
+
+### Aufgabe
+
+Füge der Tabelle `item` in der Datenbank eine Spalte `notes` hinzu. `notes` soll eine Textspalte sein, in die bei der Migration die Werte von `name` kopiert werden.
+
+<img src="media/simplest-grdb-app-5.png" height=400>
+
+### Ausführung
+
+
+
