@@ -622,3 +622,232 @@ struct ItemEditorView_Previews: PreviewProvider {
 
 ### Ausführung
 
+*AppDatabase.swift:*
+
+<pre>
+import GRDB
+import Combine
+
+struct AppDatabase {
+    private let databaseWriter: DatabaseWriter
+    
+    init(_ databaseWriter: DatabaseWriter) throws {
+        self.databaseWriter = databaseWriter
+        try migrator.migrate(databaseWriter)
+    }
+    
+    private var migrator: DatabaseMigrator {
+        var migrator = DatabaseMigrator()
+        #if DEBUG
+        migrator.eraseDatabaseOnSchemaChange = true
+        #endif
+        migrator.registerMigration("createItem") { database in
+            try database.create(table: "item") { tableDefinition in
+                tableDefinition.autoIncrementedPrimaryKey("id")
+                tableDefinition.column("name", .text).notNull()
+                tableDefinition.column("quantity", .integer)
+            }
+        }
+        return migrator
+    }
+}
+
+extension AppDatabase {
+    func saveItem(_ item: inout Item) throws {
+        try databaseWriter.write { database in
+            try item.save(database)
+        }
+    }
+    
+    func deleteItems(ids: [Int64]) throws {
+        try databaseWriter.write { database in
+            _ = try Item.deleteAll(database, keys: ids)
+        }
+    }
+    
+    <b>func itemsUnorderedPublisher() -> AnyPublisher<[Item], Error> {
+        itemsPublisher(request: Item.all())
+    }
+    
+    func itemsOrderedByNamePublisher() -> AnyPublisher<[Item], Error> {
+        itemsPublisher(request: Item.all().orderedByName())
+    }
+    
+    func itemsOrderedByNameReversedPublisher() -> AnyPublisher<[Item], Error> {
+        itemsPublisher(request: Item.all().orderedByNameReversed())
+    }
+    
+    private func itemsPublisher(request: QueryInterfaceRequest<Item>)
+    -> AnyPublisher<[Item], Error> {
+        ValueObservation.tracking(request.fetchAll)
+            .publisher(in: databaseWriter)
+            .eraseToAnyPublisher()
+    }</b>
+}
+</pre>
+
+*Item.swift:*
+
+<pre>
+import GRDB
+
+struct Item: Identifiable {
+    var id: Int64?
+    var name: String
+    var quantity: Int?
+}
+
+extension Item {
+    static func new() -> Item {
+        Item(id: nil, name: "", quantity: nil)
+    }
+    
+    var isEmpty: Bool {
+        name.isEmpty && quantity == nil
+    }
+}
+
+extension Item: Codable, FetchableRecord, MutablePersistableRecord {
+    <b>fileprivate enum Columns {
+        static let name = Column(Item.CodingKeys.name)
+        static let quantity = Column(Item.CodingKeys.quantity)
+    }</b>
+    
+    mutating func didInsert(with rowID: Int64, for column: String?) {
+        id = rowID
+    }
+}
+
+<b>extension DerivableRequest where RowDecoder == Item {
+    func orderedByName() -> Self {
+        order(Item.Columns.name)
+    }
+    
+    func orderedByNameReversed() -> Self {
+        order(Item.Columns.name).reversed()
+    }
+}</b>
+</pre>
+
+*ItemListModel.swift:*
+
+<pre>
+import GRDB
+import Combine
+
+class ItemListModel: ObservableObject {
+    <b>enum Ordering: String, CaseIterable {
+        case unspecified = "Unspecified"
+        case ascending = "Ascending"
+        case descending = "Descending"
+    }</b>
+    
+    @Published var itemList = [Item]()
+    <b>@Published var ordering: Ordering = .unspecified</b>
+    private let database: AppDatabase
+    private var itemsTracker: AnyCancellable?
+    
+    init(database: AppDatabase) {
+        self.database = database
+        <b>itemsTracker = itemsPublisher().sink { [weak self] items in
+            self?.itemList = items
+        }</b>
+    }
+    
+    func deleteItems(atOffsets offsets: IndexSet) throws {
+        let userIDs = offsets.compactMap { itemList[$0].id }
+        try database.deleteItems(ids: userIDs)
+    }
+    
+    func newItemEditorModel(for item: Item) -> ItemEditorModel {
+        ItemEditorModel(database: database, item: item)
+    }
+    
+    <b>func itemsPublisher() -> AnyPublisher<[Item], Never> {
+        $ordering.map { ordering -> AnyPublisher<[Item], Error> in
+            switch ordering {
+            case .unspecified:
+                return self.database.itemsUnorderedPublisher()
+            case .ascending:
+                return self.database.itemsOrderedByNamePublisher()
+            case .descending:
+                return self.database.itemsOrderedByNameReversedPublisher()
+
+            }
+        }.map { publisher in
+            publisher.catch { failure in
+                Just<[Item]>([])
+            }
+        }
+        .switchToLatest()
+        .eraseToAnyPublisher()
+    }
+    
+    func nextOrdering() {
+        let allCases = Ordering.allCases
+        let index = allCases.firstIndex(of: ordering)!
+        let indexNext = (index + 1) % allCases.count
+        ordering = allCases[indexNext]
+    }</b>
+}
+</pre>
+
+*ItemListView.swift:*
+
+<pre>
+import SwiftUI
+
+struct ItemListView: View {
+    @ObservedObject var itemListModel: ItemListModel
+    @State private var newItemSheet = false
+    
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(itemListModel.itemList) { item in
+                    NavigationLink(
+                        destination: EditItemView(
+                            itemEditorModel: itemListModel.newItemEditorModel(for: item)),
+                        label: { ItemRow(item: item) })
+                }.onDelete { indexSet in
+                    try! itemListModel.deleteItems(atOffsets: indexSet)
+                }
+            }
+            .navigationBarTitle(Text("\(itemListModel.itemList.count) Items"))
+            <b>.navigationBarItems(
+                leading: nextOrderingButton,
+                trailing: Button("Add") {
+                    newItemSheet = true
+                }).sheet(isPresented: $newItemSheet, content: {
+                    CreateItemView(
+                        itemEditorModel: itemListModel.newItemEditorModel(for: .new()),
+                        dismissAction: { newItemSheet = false})
+                })
+        }
+    }
+    
+    var nextOrderingButton: some View {
+        Button(itemListModel.ordering.rawValue) {
+            itemListModel.nextOrdering()
+        }
+    }</b>
+}
+
+struct ItemRow: View {
+    var item: Item
+    
+    var body: some View {
+        HStack {
+            Text(item.name)
+            Spacer()
+            Text(item.quantity.map { String($0) } ?? "")
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ItemListView(itemListModel: ItemListModel(database: try! .empty()))
+    }
+}
+</pre>
