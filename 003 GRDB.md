@@ -1,6 +1,8 @@
-## GRDB
+# GRDB
 
-### Schritt 1: Zunächst eine möglichst minimale App mit GRDB
+## Schritt 1: Zunächst eine möglichst minimale App mit GRDB
+
+### Aufgabe
 
 Wir benutzen GRDB als SQLite-Wrapper und erstellen eine möglichst simple App: Die Datenbank soll aus einer Liste von Items bestehen. Jedes `Item` besteht aus einem Namen (`name`) und optional aus seiner Anzahl (`quantity`). Der Button *New* erstellt ein neues Item mit einem zufälligen Namen und einer zufälligen Anzahl. Durch ein Wischen nach links können Items aus der Liste gelöscht werden.
 
@@ -255,6 +257,8 @@ struct ContentView_Previews: PreviewProvider {
 
 ## Schritt 2: Items in neuem Fenster erstellen
 
+### Aufgabe
+
 <a><img src="media/simplest-grdb-app-2.gif" height=400><a>
 
 ### Ausführung
@@ -452,6 +456,8 @@ struct ItemEditorView_Previews: PreviewProvider {
 
 ## Schritt 3: Items bearbeitbar machen
 
+### Aufgabe
+
 <img src="media/simplest-grdb-app-3.gif" height=400>
 
 ### Ausführung
@@ -607,3 +613,12 @@ struct ItemEditorView_Previews: PreviewProvider {
     }
 }
 </pre>
+
+## Schritt 4: Sortierte Anzeige
+
+### Aufgabe
+
+<a><img src="media/simplest-grdb-app-4.gif" height=400></a>
+
+### Ausführung
+
