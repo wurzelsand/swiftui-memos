@@ -852,7 +852,7 @@ struct ContentView_Previews: PreviewProvider {
 }
 </pre>
 
-## Migration: Neue Spalte in der Datenbank
+## Schritt 5, Migration: Neue Spalte in der Datenbank
 
 ### Aufgabe
 
